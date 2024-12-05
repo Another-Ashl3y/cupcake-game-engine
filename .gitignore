@@ -1,0 +1,8 @@
+.vscode
+Cupcake.exe
+build_command.txt
+SDL2.dll
+src/lib/
+src/include/
+src/out/
+src/.vs/
