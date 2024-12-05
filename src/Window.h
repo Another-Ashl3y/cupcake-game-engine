@@ -64,7 +64,7 @@ public:
 		// Change title to include the framerate
 		char fr_data[32];
 		snprintf(fr_data, sizeof fr_data, "%f", 1000.0/ (double)delta);
-		SDL_SetWindowTitle(window, fr_data);
+		// SDL_SetWindowTitle(window, fr_data);
 	}
 
 	void draw_rect(int x, int y, int w, int h, Color c) {

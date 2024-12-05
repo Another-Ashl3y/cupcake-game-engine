@@ -87,7 +87,7 @@ public:
 class Particle
 {
 public:
-	double RADIUS = 0.5;
+	double RADIUS = 1.0;
 
 	Vector2D position = Vector2D(0.0, 0.0);
 	Vector2D velocity = Vector2D(0.0, 0.0);
@@ -143,12 +143,6 @@ public:
 		Vector2D vector_diff = v1.sub(v2);
 		double mass_effector = (2.0 * other.material.density) / sum_of_mass;
 		double dot_num = vector_diff.dot(positn_diff);
-		
-		if (dot_den == 0.0) {
-			cout << "x != 0 AND x*x == 0\n";
-			return;  			// This happens somehow
-		}
-
 		velocity.apply(positn_diff.mul(-mass_effector * (dot_num / dot_den)));
 		position.apply(positn_diff.mul(RADIUS - d));
 
@@ -205,7 +199,7 @@ public:
 
 	void update()
 	{
-		correct_particle_vectors();
+		// correct_particle_vectors();
 		for (Particle &p : particles)
 		{
 			p.update(delta, this);
@@ -232,6 +226,10 @@ public:
 				p.color);
 		}
 		_draw();
+		
+		char fr_data[5];
+		snprintf(fr_data, sizeof fr_data, "%f", particles.size());
+		SDL_SetWindowTitle(window, fr_data);
 	}
 
 	void run()
@@ -248,7 +246,7 @@ public:
 
 	void add_particle(const Particle &p)
 	{
-		pending_queue.push_back(p);
+		particles.push_back(p);
 	}
 
 	void remove_particle(Particle *p)
@@ -266,32 +264,30 @@ int main(int argc, char **argv)
 	// 		Vector2D(0.0, 0.0),
 	// 		Color{20, 20, 150, 255},
 	// 		Material()));
+	g.add_particle(
+		Particle(
+			Vector2D(100, 100),
+			Vector2D(-10.0, -10.0),
+			Color{255, 0, 0, 0},
+			Material(1.0, 1.0, true, false, 0.0, {})
+		)
+	);
 
-	for (double x = 5; x < 35; x += 1)
+	for (double x = 5; x < 35; x += 1.0)
 	{
-
-		g.add_particle(
-			Particle(
-				Vector2D(100, 100),
-				Vector2D(-10.0,-9.9),
-				Color{255, 0, 0, 0},
-				Material(0.5, 1.0, true, false, 0.0, {})
-			)
-		);
-
-		for (int y = 5; y < 35; y++)
+		for (double y = 5; y < 35; y += 1.0)
 		{
 			g.add_particle(
 				Particle(
 					Vector2D(x, y),
 					Vector2D(0.0, 0.0),
 					Color{255, 255, 150, 255},
-					Material()));
+					Material(1.0, 1.0, true, false, 0.0, {})));
 		}
 	}
 
-
-
+	// g.correct_particle_vectors();
+	// if (g.particles.size() == ) 
 	g.run();
 
 	return 0;
