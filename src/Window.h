@@ -75,6 +75,7 @@ public:
 		rect.h = w;
 		rect.w = h;
 		SDL_RenderFillRect(renderer, &rect);
+		// SDL_RenderDrawLine(renderer, 0, 0, x, y);
 	}
 	
 	void clear() {
