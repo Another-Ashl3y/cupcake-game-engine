@@ -265,12 +265,12 @@ public:
 		color = static_color;
 	}
 
-	void update(float delta, Window* w)
+	void update(float delta, Window* w) override
 	{
 		_move(delta);
 		// if (velocity.mag() > 0.0001)
 		// {
-		velocity.x += 0.1;
+		velocity.x += 1;
 			color = Color{255, 255, 255, 200};
 		// }
 	}
