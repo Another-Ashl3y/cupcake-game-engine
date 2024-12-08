@@ -8,10 +8,10 @@ using namespace std;
 class Vector2D
 {
 public:
-	double x;
-	double y;
+	float x;
+	float y;
 
-	Vector2D(double _x, double _y)
+	Vector2D(float _x, float _y)
 	{
 		x = _x;
 		y = _y;
@@ -27,7 +27,7 @@ public:
 	{
 		return Vector2D(x * other.x, y * other.y);
 	}
-	Vector2D mul(double other)
+	Vector2D mul(float other)
 	{
 		return Vector2D(x * other, y * other);
 	}
@@ -35,66 +35,77 @@ public:
 	{
 		return Vector2D(x - other.x, y - other.y);
 	}
-	Vector2D sub(double other)
+	Vector2D sub(float other)
 	{
 		return Vector2D(x - other, y - other);
+	}
+	Vector2D add(Vector2D other)
+	{
+		return Vector2D(x + other.x, y + other.y);
+	}
+	Vector2D add(float other)
+	{
+		return Vector2D(x + other, y + other);
 	}
 
 	Vector2D clone()
 	{
 		return Vector2D(x, y);
 	}
-	double mag()
+	float mag()
 	{
 		return sqrt(x * x + y * y);
 	}
-	double dot(Vector2D &other)
+	float dot(Vector2D &other)
 	{
 		return x * other.x + y * other.y;
+	}
+	Vector2D normalized() {
+		float magn = mag();
+		if (magn == 0.0) return Vector2D(0.0, 0.0);
+		return Vector2D(x/magn, y/magn);
 	}
 };
 
 class Material
 {
 public:
-	double density = 1.0;
-	double insulation = 1.0;
+	float density = 1.0;
+	float insulation = 1.0;
 
 	bool has_collision = true;
 
 	bool has_gravity = true;
-	double gravitational_constant = 1.0;
+	float gravitational_constant = 1.0;
 	vector<Material *> materials_effected_by_gravity = {};
 
 	Material(
-		double _density,
-		double _insulation,
+		float _density,
+		float _insulation,
 		bool _has_collision,
-		bool _has_gravity,
-		double _gravitational_constant,
-		vector<Material *> _materials_effected_by_gravity)
+		bool _has_gravity)
 	{
 		density = _density;
 		insulation = _insulation;
 		has_collision = _has_collision;
 		has_gravity = _has_gravity;
-		gravitational_constant = _gravitational_constant;
-		materials_effected_by_gravity = materials_effected_by_gravity;
 	}
 	Material() {};
 };
 
+Material DEFAULT = Material();
+
 class Particle
 {
 public:
-	double RADIUS = 1.0;
+	float RADIUS = 1.0;
 
 	Vector2D position = Vector2D(0.0, 0.0);
 	Vector2D velocity = Vector2D(0.0, 0.0);
 	Color color = Color{255, 255, 255, 255};
-	Material material = Material();
+	Material* material = &DEFAULT;
 
-	Particle(Vector2D _position, Vector2D _velocity, Color _color, Material _material)
+	Particle(Vector2D _position, Vector2D _velocity, Color _color, Material* _material)
 	{
 		position = _position;
 		velocity = _velocity;
@@ -105,7 +116,7 @@ public:
 	void _move(float delta)
 	{
 		position.apply(velocity.mul(delta * 0.001));
-		velocity = velocity.mul(material.insulation);
+		velocity = velocity.mul(material->insulation);
 	}
 
 	virtual void update(float delta, Window *w)
@@ -113,14 +124,14 @@ public:
 		_move(delta);
 	}
 
-	void collide_with(Particle &other)
+	void collide_with(Particle *other)
 	{
 		Vector2D v1 = velocity.clone();
-		Vector2D v2 = other.velocity.clone();
+		Vector2D v2 = other->velocity.clone();
 		Vector2D p1 = position.clone();
-		Vector2D p2 = other.position.clone();
+		Vector2D p2 = other->position.clone();
 
-		double sum_of_mass = material.density + other.material.density;
+		float sum_of_mass = material->density + other->material->density;
 
 		if (sum_of_mass == 0)
 		{
@@ -129,37 +140,57 @@ public:
 
 		// Point A
 		Vector2D positn_diff = p1.sub(p2);
-		double d = positn_diff.mag();
-		double dot_den = d * d;
+		float d = positn_diff.mag();
+		float dot_den = d * d;
 
-		if (d >= RADIUS && dot_den != 0.0)
-		{
-			return;
+		if (dot_den == 0.0) return;
+
+		for (int i=0; i<material->materials_effected_by_gravity.size(); i++) {
+			if (other->material == material->materials_effected_by_gravity[i]) 
+			{
+				Vector2D direction = positn_diff.normalized();
+				float force = (other->material->density * material->density * (material->gravitational_constant + other->material->gravitational_constant)*0.5)/dot_den;
+				velocity.apply(direction.mul(-force/material->density));
+				other->velocity.apply(direction.mul(force/other->material->density));
+			}
 		}
 
+		if (d >= RADIUS) return;
+
 		Vector2D vector_diff = v1.sub(v2);
-		double mass_effector = (2.0 * other.material.density) / sum_of_mass;
-		double dot_num = vector_diff.dot(positn_diff);
+		float mass_effector = (2.0 * other->material->density) / sum_of_mass;
+		float dot_num = vector_diff.dot(positn_diff);
 		velocity.apply(positn_diff.mul(-mass_effector * (dot_num / dot_den)));
 		position.apply(positn_diff.mul(RADIUS - d));
 
 		// Point B
-		mass_effector = (2.0 * material.density) / sum_of_mass;
+		mass_effector = (2.0 * material->density) / sum_of_mass;
 		vector_diff = v2.sub(v1);
 		positn_diff = p2.sub(p1);
 		dot_num = vector_diff.dot(positn_diff);
-		other.velocity.apply(positn_diff.mul(-mass_effector * (dot_num / dot_den)));
-		other.position.apply(positn_diff.mul(RADIUS - d));
+		other->velocity.apply(positn_diff.mul(-mass_effector * (dot_num / dot_den)));
+		other->position.apply(positn_diff.mul(RADIUS - d));
+
+		
 	}
 };
+
+
+class Camera 
+{
+	public:
+	Vector2D position = Vector2D(0, 0);
+};
+
 
 class Game : public Window
 {
 public:
-	// Window				window			=	Window("Demo", 10, 10);
-	vector<Particle> particles = {};
-	vector<Particle> pending_queue = {};
+	vector<Particle*> particles = {};
+	vector<Particle*> pending_queue = {};
 	vector<Particle *> removal_queue = {};
+
+	Camera *cam;
 
 	int CELL_SIZE = 8;
 	int CELL_COUNT_X = 160;
@@ -187,7 +218,7 @@ public:
 			Particle *current = removal_queue.at(0);
 			for (int i = 0; i < particles.size(); i++)
 			{
-				if (&particles[i] == current)
+				if (particles[i] == current)
 				{
 					particles[i] = particles.back();
 					particles[particles.size() - 1] = particles[i];
@@ -199,31 +230,29 @@ public:
 
 	void update()
 	{
-		// correct_particle_vectors();
-		for (Particle &p : particles)
+		for (Particle* p : particles)
 		{
-			p.update(delta, this);
+			p -> update(delta, this);
 		}
-		// particles[0].collide_with(particles[1]);
 		for (int i = 0; i < particles.size() - 1; i++)
 		{
 			for (int j = i + 1; j < particles.size(); j++)
 			{
-				particles[i].collide_with(particles[j]);
+				particles[i]->collide_with(particles[j]);
 			}
 		}
 	}
 
 	void draw()
 	{
-		for (Particle p : particles)
+		for (Particle *p : particles)
 		{
 			draw_rect(
-				p.position.x * CELL_SIZE,
-				p.position.y * CELL_SIZE,
+				(p->position.x - cam->position.x) * CELL_SIZE,
+				(p->position.y - cam->position.y) * CELL_SIZE,
 				CELL_SIZE,
 				CELL_SIZE,
-				p.color);
+				p->color);
 		}
 		_draw();
 
@@ -244,7 +273,7 @@ public:
 		}
 	}
 
-	void add_particle(const Particle &p)
+	void add_particle(Particle* p)
 	{
 		particles.push_back(p);
 	}
@@ -257,10 +286,12 @@ public:
 
 class Velocitometer : public Particle
 {
+
 public:
 	Color static_color = Color{255, 255, 255, 255};
+	
 
-	Velocitometer(Vector2D pos, Vector2D vel, Material mat) : Particle(pos, vel, static_color, mat)
+	Velocitometer(Vector2D pos, Vector2D vel, Material* mat) : Particle(pos, vel, static_color, mat)
 	{
 		color = static_color;
 	}
@@ -268,40 +299,84 @@ public:
 	void update(float delta, Window* w) override
 	{
 		_move(delta);
-		// if (velocity.mag() > 0.0001)
-		// {
-		velocity.x += 1;
-			color = Color{255, 255, 255, 200};
-		// }
+
+		if (velocity.mag() > 0.1)
+		{
+			color = Color{255, 0, 0, 200};
+		}
+	}
+};
+
+class Tracker : public Particle
+{
+public:
+	Color static_color = Color{150, 0, 255, 255};
+	Camera *cam;
+
+	Tracker(Vector2D pos, Vector2D vel, Material* mat, Camera *_cam) : Particle(pos, vel, static_color, mat) {
+		cam = _cam;
 	}
 
+	void update(float delta, Window* w) override
+	{
+		_move(delta);
+
+		cam->position.apply(position.sub(cam->position));
+		cam->position.apply(Vector2D(-40,-40));
+		SDL_SetWindowTitle(w->window, "Trackign");
+	}
 };
 
 int main(int argc, char **argv)
 {
+	Camera cam = Camera();
+	// cam.position = Vector2D(40,40);
 	Game g = Game("Cupcake", 600, 600);
 
-	g.add_particle(
-		Particle(
-			Vector2D(80, 80),
-			Vector2D(-10.0, -10.0),
-			Color{255,0,0,255},
-			Material(999.0, 1.0, true, false, 0.0, {})));
+	g.cam = &cam;
 
-	for (double x = 0; x < 50; x += 1.0)
+	Material wall = Material(0.0001, 0.99, true, true);
+
+	Material bullet = Material(1.0, 1.0, true, true);
+	wall.materials_effected_by_gravity.push_back(&wall);
+	bullet.materials_effected_by_gravity.push_back(&wall);
+	wall.materials_effected_by_gravity.push_back(&bullet);
+	bullet.materials_effected_by_gravity.push_back(&bullet);
+
+	// g.add_particle(
+	// 	new Tracker(
+	// 		Vector2D(75.0, 75.0),
+	// 		Vector2D(0, 0),
+	// 		&wall,
+	// 		&cam));
+
+	for (float x = 5; x < 5+50; x += 1.1)
 	{
-		for (double y = 0; y < 50; y += 1.0)
+		for (float y = 5; y < 55; y += 1.1)
 		{
+			if (
+				(x==30 && y == 30) || 
+				sqrt((x-30)*(x-30) + (y-30)*(y-30)) > 20
+			) continue;
+			// if (x != 75 || y != 75) {
 			g.add_particle(
-				Velocitometer(
+				new Particle(
 					Vector2D(x, y),
-					Vector2D(0.0, 0.0),
-					Material(1.0, 1.0, true, false, 0.0, {})));
+					Vector2D(0, 0),
+					Color{255,200,100,255},
+					&wall));
+					// }
 		}
 	}
+	g.add_particle(
+		new Particle(
+			Vector2D(30, 30),
+			Vector2D(0,0),
+			Color{100,100,255, 255},
+			&bullet
+		)
+	);
 
-	// g.correct_particle_vectors();
-	// if (g.particles.size() == )
 	g.run();
 
 	return 0;

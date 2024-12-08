@@ -63,7 +63,7 @@ public:
 
 		// Change title to include the framerate
 		char fr_data[32];
-		snprintf(fr_data, sizeof fr_data, "%f", 1000.0/ (double)delta);
+		snprintf(fr_data, sizeof fr_data, "%f", 1000.0/ (float)delta);
 		// SDL_SetWindowTitle(window, fr_data);
 	}
 
