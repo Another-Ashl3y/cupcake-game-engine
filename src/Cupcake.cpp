@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <vector>
 #include <math.h>
+#include <map>
 #include "Window.h"
 
 using namespace std;
@@ -67,6 +68,18 @@ public:
 	}
 };
 
+class IntVector2D {
+public:
+	int x;
+	int y;
+
+	IntVector2D(int _x, int _y) 
+	{
+		x = _x;
+		y = _y;
+	}
+};
+
 class Material
 {
 public:
@@ -104,6 +117,9 @@ public:
 	Vector2D velocity = Vector2D(0.0, 0.0);
 	Color color = Color{255, 255, 255, 255};
 	Material* material = &DEFAULT;
+
+	vector<Particle*> collisions = {};
+
 
 	Particle(Vector2D _position, Vector2D _velocity, Color _color, Material* _material)
 	{
@@ -157,6 +173,9 @@ public:
 
 		if (d >= RADIUS) return;
 
+		other->collisions.push_back(this);
+		collisions.push_back(other);
+
 		Vector2D vector_diff = v1.sub(v2);
 		float mass_effector = (2.0 * other->material->density) / sum_of_mass;
 		float dot_num = vector_diff.dot(positn_diff);
@@ -173,8 +192,19 @@ public:
 
 		
 	}
+
+	IntVector2D chunk() {
+		return IntVector2D(position.x/16, position.y/16);
+	}
 };
 
+bool contains(vector<IntVector2D*> arr, IntVector2D &item) {
+	for (int i=0; i<arr.size(); i++) {
+		if (arr[i]->x == item.x && arr[i]->y == item.y) {
+			return true;
+		}
+	}
+}
 
 class Camera 
 {
@@ -186,15 +216,17 @@ class Camera
 class Game : public Window
 {
 public:
-	vector<Particle*> particles = {};
-	vector<Particle*> pending_queue = {};
+	vector<Particle *> particles = {};
+	vector<Particle *> pending_queue = {};
 	vector<Particle *> removal_queue = {};
 
 	Camera *cam;
 
-	int CELL_SIZE = 8;
+	int CELL_SIZE = 6;
 	int CELL_COUNT_X = 160;
 	int CELL_COUNT_Y = 90;
+
+	// std::map<IntVector2D, vector<Particle *>> chunks = {};
 
 	Game(const char *t, int w, int h)
 		: Window(t, w, h)
@@ -228,19 +260,46 @@ public:
 		}
 	}
 
+	// void update_chunks() {
+	// 	for (Particle* p : particles) 
+	// 	{
+	// 		IntVector2D chunk_position = p->chunk();
+	// 		if (chunks.count(chunk_position) > 0) 
+	// 		{
+	// 			chunks.at(chunk_position).push_back(p);
+	// 		} else {
+	// 			chunks[chunk_position] = {p};
+	// 		}
+	// 	}
+	// }
+
 	void update()
 	{
 		for (Particle* p : particles)
 		{
-			p -> update(delta, this);
+			p -> update(delta*2, this);
 		}
-		for (int i = 0; i < particles.size() - 1; i++)
-		{
-			for (int j = i + 1; j < particles.size(); j++)
-			{
+
+		for (int i=0; i<particles.size(); i++) {
+			for (int j=i+1; j<particles.size(); j++) {
 				particles[i]->collide_with(particles[j]);
 			}
 		}
+
+		// vector<IntVector2D *> processed_chunks {};
+		// vector<IntVector2D> keys {};
+
+		// for (auto chunk : chunks) {
+		// 	keys.push_back(chunk.first);
+		// }
+
+		// for (Particle* p : particles)
+		// {
+		// 	IntVector2D chunk_position = p->chunk();
+		// 	if (contains(keys, chunk_position)) {
+
+		// 	}
+		// }
 	}
 
 	void draw()
@@ -256,9 +315,9 @@ public:
 		}
 		_draw();
 
-		char fr_data[5];
-		snprintf(fr_data, sizeof fr_data, "%f", particles.size());
-		SDL_SetWindowTitle(window, fr_data);
+		// char fr_data[5];
+		// snprintf(fr_data, sizeof fr_data, "%f", particles.size());
+		// SDL_SetWindowTitle(window, fr_data);
 	}
 
 	void run()
@@ -267,7 +326,7 @@ public:
 		{
 			clear();
 			update();
-			handle_event();
+			_handle_event();
 			draw();
 			// hold_to_fps();
 		}
@@ -288,7 +347,7 @@ class Velocitometer : public Particle
 {
 
 public:
-	Color static_color = Color{255, 255, 255, 255};
+	static constexpr Color static_color{255, 255, 255, 255};
 	
 
 	Velocitometer(Vector2D pos, Vector2D vel, Material* mat) : Particle(pos, vel, static_color, mat)
@@ -310,7 +369,7 @@ public:
 class Tracker : public Particle
 {
 public:
-	Color static_color = Color{150, 0, 255, 255};
+	static constexpr Color static_color{100, 20, 255, 255};
 	Camera *cam;
 
 	Tracker(Vector2D pos, Vector2D vel, Material* mat, Camera *_cam) : Particle(pos, vel, static_color, mat) {
@@ -322,7 +381,7 @@ public:
 		_move(delta);
 
 		cam->position.apply(position.sub(cam->position));
-		cam->position.apply(Vector2D(-40,-40));
+		cam->position.apply(Vector2D(-100,-50));
 		SDL_SetWindowTitle(w->window, "Trackign");
 	}
 };
@@ -330,14 +389,14 @@ public:
 int main(int argc, char **argv)
 {
 	Camera cam = Camera();
-	// cam.position = Vector2D(40,40);
-	Game g = Game("Cupcake", 600, 600);
+	cam.position = Vector2D(-100,-60);
+	Game g = Game("Cupcake", 1000, 600);
 
 	g.cam = &cam;
 
-	Material wall = Material(0.0001, 0.99, true, true);
+	Material wall = Material(0.01, 0.9, true, true);
 
-	Material bullet = Material(1.0, 1.0, true, true);
+	Material bullet = Material(1.0, 0.0, true, true);
 	wall.materials_effected_by_gravity.push_back(&wall);
 	bullet.materials_effected_by_gravity.push_back(&wall);
 	wall.materials_effected_by_gravity.push_back(&bullet);
@@ -345,18 +404,25 @@ int main(int argc, char **argv)
 
 	// g.add_particle(
 	// 	new Tracker(
-	// 		Vector2D(75.0, 75.0),
+	// 		Vector2D(22.0, 22.0),
 	// 		Vector2D(0, 0),
 	// 		&wall,
 	// 		&cam));
 
-	for (float x = 5; x < 5+50; x += 1.1)
+	g.add_particle(
+		new Velocitometer(
+			Vector2D(0, 0),
+			Vector2D(0,0),
+			&bullet
+		)
+	);
+	for (float x = -50; x < 100; x += 3)
 	{
-		for (float y = 5; y < 55; y += 1.1)
+		for (float y = -50; y < 100; y += 3)
 		{
 			if (
 				(x==30 && y == 30) || 
-				sqrt((x-30)*(x-30) + (y-30)*(y-30)) > 20
+				sqrt((x-30)*(x-30) + (y-30)*(y-30)) > 50
 			) continue;
 			// if (x != 75 || y != 75) {
 			g.add_particle(
@@ -368,14 +434,6 @@ int main(int argc, char **argv)
 					// }
 		}
 	}
-	g.add_particle(
-		new Particle(
-			Vector2D(30, 30),
-			Vector2D(0,0),
-			Color{100,100,255, 255},
-			&bullet
-		)
-	);
 
 	g.run();
 

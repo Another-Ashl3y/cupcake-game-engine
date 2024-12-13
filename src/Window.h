@@ -1,5 +1,6 @@
-#include "include/SDL2/SDL.h"
 #include <iostream>
+#include <map>
+#include "KeyReader.h"
 using namespace std;
 
 struct Color {
@@ -29,6 +30,9 @@ public:
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 
+	vector<bool[2]> keys = {};
+
+
 	Window(const char* t, int w, int h) {
 		SDL_Init(SDL_INIT_EVERYTHING);
 		window = SDL_CreateWindow(t, 200, 100, w, h, SDL_WINDOW_SHOWN);
@@ -40,23 +44,27 @@ public:
 		width = w;
 		height = h;
 
-		clear();
+		_clear();
 	}
 
-	void handle_event() {
+	void _handle_event() {
 		SDL_Event event;
 		SDL_PollEvent(&event);
 		switch (event.type) {
 			case SDL_QUIT:
 				running = false;
-				clean();
+				_clean();
+				break;
+			case SDL_KEYDOWN:
+				break;
+			case SDL_KEYUP:
 				break;
 			default:
 				break;
 		}
 	}
 
-	void update_delta() {
+	void _update_delta() {
 		uint32_t now = SDL_GetTicks();
 		delta = now - time_of_last_frame;
 		time_of_last_frame = now;
@@ -67,7 +75,7 @@ public:
 		// SDL_SetWindowTitle(window, fr_data);
 	}
 
-	void draw_rect(int x, int y, int w, int h, Color c) {
+	void _draw_rect(int x, int y, int w, int h, Color c) {
 		SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, c.a);
 		SDL_Rect rect = SDL_Rect();
 		rect.x = x;
@@ -78,28 +86,28 @@ public:
 		// SDL_RenderDrawLine(renderer, 0, 0, x, y);
 	}
 	
-	void clear() {
+	void _clear() {
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 		SDL_RenderClear(renderer);
 	}
 
 	void _draw() {
 		SDL_RenderPresent(renderer);
-		update_delta();
-		hold_to_fps();
+		_update_delta();
+		_hold_to_fps();
 	}
 
 	void draw() {
 		_draw();
 	}
 
-	void clean() {
+	void _clean() {
 		SDL_DestroyWindow(window);
 		SDL_DestroyRenderer(renderer);
 		SDL_Quit();
 	}
 
-	void hold_to_fps() {
+	void _hold_to_fps() {
 		if (delta < 16)
 			SDL_Delay(16 - delta);
 	}
