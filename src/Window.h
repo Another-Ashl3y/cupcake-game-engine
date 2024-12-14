@@ -1,6 +1,6 @@
 #include <iostream>
 #include <map>
-#include "KeyReader.h"
+#include <SDL.h>
 using namespace std;
 
 struct Color {
@@ -30,7 +30,10 @@ public:
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 
-	vector<bool[2]> keys = {};
+
+	int numkeys;
+	const Uint8* x = SDL_GetKeyboardState(&numkeys);
+
 
 
 	Window(const char* t, int w, int h) {
@@ -62,6 +65,10 @@ public:
 			default:
 				break;
 		}
+		// if (numkeys > 0) {
+		// 	running=false;
+		// 	_clean();
+		// }
 	}
 
 	void _update_delta() {
@@ -69,10 +76,13 @@ public:
 		delta = now - time_of_last_frame;
 		time_of_last_frame = now;
 
-		// Change title to include the framerate
+		// Change title to include the framerate	
+		
+
 		char fr_data[32];
+		// snprintf(fr_data, sizeof fr_data, "%f", numkeys);
 		snprintf(fr_data, sizeof fr_data, "%f", 1000.0/ (float)delta);
-		// SDL_SetWindowTitle(window, fr_data);
+		SDL_SetWindowTitle(window, fr_data);
 	}
 
 	void _draw_rect(int x, int y, int w, int h, Color c) {
@@ -102,6 +112,7 @@ public:
 	}
 
 	void _clean() {
+		running = false;
 		SDL_DestroyWindow(window);
 		SDL_DestroyRenderer(renderer);
 		SDL_Quit();
